@@ -122,6 +122,5 @@ def trainer(epochs, training, validation, net):
         local_mse = 0.0
         for element in validation:
             local_mse += 0.5 * sum((element[1] - net.forward(element[0])) ** 2)
-        print i
         track.append(local_mse / (len(validation) * net.outdim))
     return track

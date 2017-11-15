@@ -4,6 +4,10 @@ from random import shuffle
 
 from wavelets import Morlet
 
+from keras.models import Model
+from keras.layers import Dense, Add, Input
+from keras import backend as K
+
 
 etta = 0.01
 def from_signal_freq(signal, nyq_freq):
@@ -26,6 +30,27 @@ def from_signal_freq(signal, nyq_freq):
     max_freq = right_point * step
     return min_freq, max_freq
 
+def morlet(x):
+    return 0.75112554446494 * K.cos(x * 5.336446256636997) * K.exp((-x ** 2) / 2)
+def mhat(x):
+    return (1 - x ** 2) * K.exp((-x ** 2) / 2)
+
+ACTIVATIONS_LIST = {'morlet': morlet, 'mhat': mhat}
+
+
+def wavelet_neural_network(indim, outdim, hiddim=19, activation='morlet', linear_bypass=False):
+    if not activation in ACTIVATIONS_LIST.keys():
+        raise Exception('Unknown wavelet activation function {}!'.format(activation))
+    inp = Input((indim,))
+    hid = Dense(hiddim, activation=ACTIVATIONS_LIST[activation])(inp)
+    if linear_bypass:
+        add = Add()([inp, hid])
+        out = Dense(outdim, activation='linear')(add)
+    else:
+        out = Dense(outdim, activation='linear')(hid)
+    model = Model(inp, out)
+    model.compile(loss='mse', optimizer='adam', metrics=['mse'])
+    return model
 
 def wavelon_class_constructor(motherfunction=None, period=None, frame=None, signal=None, fa=False):
     Mtf = motherfunction if motherfunction else Morlet
@@ -114,7 +139,7 @@ def wavelon_class_constructor(motherfunction=None, period=None, frame=None, sign
 
 def trainer(epochs, training, validation, net):
     track = []
-    for i in xrange(epochs):
+    for i in range(epochs):
         localtrain = training[:]
         shuffle(localtrain)
         for element in localtrain:
